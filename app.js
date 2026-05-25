@@ -1,265 +1,190 @@
 // =============================================
-// Viking Chat — Cleveland State University Bot
-// Powered by Claude AI + live web search
-// Searches csuohio.edu for real-time answers
+// VikingGPT — Cleveland State University
+// Claude API + live csuohio.edu web search
+// BearcatGPT-inspired interface
 // =============================================
 
-const BOT_NAME = "Viking";
-const USER_INITIALS = "KP";
+const SYSTEM_PROMPT = `You are VikingGPT, the official AI assistant for Cleveland State University (CSU).
+Search csuohio.edu and related CSU sites for accurate, real-time answers.
+Give specific details: hours, deadlines, phone numbers, emails, room numbers.
+Be concise, helpful, and friendly — like a knowledgeable student advisor.
+Always cite the source page. Never make up information.`;
 
-// System prompt that tells the AI to act as a CSU assistant
-// and search the official CSU website for accurate answers
-const SYSTEM_PROMPT = `You are Viking, the official AI assistant for Cleveland State University (CSU).
-
-Your job is to answer questions from current and prospective CSU students, faculty, and visitors by searching the official CSU website (csuohio.edu) and related CSU pages.
-
-IMPORTANT RULES:
-- Always search csuohio.edu first for up-to-date, accurate information
-- Give specific, precise answers — hours, dates, deadlines, names, contacts
-- If you find specific data (times, phone numbers, emails, deadlines), include them
-- Keep answers clear and well-structured with bullet points or sections where helpful
-- Mention the source page when relevant so users can verify
-- You cover: admissions, programs, tuition, housing, campus life, recreation, calendar, staff, contacts, financial aid, academic departments, parking, library, and anything CSU-related
-- If something is not on the CSU website, say so and suggest where to find it
-- Be friendly, helpful, and concise — like a knowledgeable student advisor
-- Do NOT make up information. If unsure, say so and direct them to the right office`;
-
-// Tracks whether a request is in flight
+// Conversation history so context carries across messages
+let conversationHistory = [];
 let isTyping = false;
 
-// Stores the conversation so context carries across messages
-let conversationHistory = [];
+// ---- VIEW SWITCHING ----
 
-// ---- INIT ----
+// Show the home/agents view
+function showHome() {
+  document.getElementById("homeView").style.display = "flex";
+  document.getElementById("chatView").style.display = "none";
+}
 
-// Show the welcome message when the page loads
-window.addEventListener("DOMContentLoaded", () => {
-  appendMessage(
-    "bot",
-    `Hey! I'm Viking, your Cleveland State University assistant 🏛️\n\nI search csuohio.edu in real-time to give you accurate, up-to-date answers about:\n• Rec center hours & facilities\n• Admissions & deadlines\n• Tuition & financial aid\n• Housing & campus life\n• Academic programs & calendar\n• Staff, contacts & departments\n\nWhat would you like to know about CSU?`,
-    "csuohio.edu"
-  );
-});
+// Open a specific agent and start the chat
+function startChat(agentName) {
+  // Reset conversation for fresh start
+  conversationHistory = [];
+
+  document.getElementById("homeView").style.display = "none";
+  document.getElementById("chatView").style.display = "flex";
+  document.getElementById("chatAgentName").textContent = agentName;
+  document.getElementById("messages").innerHTML = "";
+
+  // Welcome message tailored to which agent was clicked
+  const welcomes = {
+    "Viking Chat":        `Hi! I'm VikingGPT, your Cleveland State University assistant 🏛️\n\nI search csuohio.edu in real-time to answer any question about CSU — admissions, tuition, housing, programs, rec center hours, calendar, staff, and more.\n\nWhat would you like to know?`,
+    "CSU Admissions":     `Hi! I'm the CSU Admissions assistant.\n\nI can help you with:\n• Application steps & deadlines\n• Required documents\n• Transfer admissions\n• Graduate programs\n• International students\n\nWhat do you need help with?`,
+    "Campus Resources":   `Hi! I'm the CSU Campus Resources assistant.\n\nI can help you find:\n• Rec center hours & pool schedule\n• Library access & hours\n• Tutoring & academic support\n• Counseling & wellness services\n• Parking & transit\n\nWhat are you looking for?`,
+  };
+
+  appendMessage("bot", welcomes[agentName] || welcomes["Viking Chat"], "csuohio.edu");
+}
 
 // ---- MESSAGE HANDLING ----
 
-// Send a message — called by button click or Enter key
+// Send user message and trigger API call
 function sendMessage() {
   const input = document.getElementById("userInput");
   const text = input.value.trim();
 
-  // Prevent sending empty messages or spamming while typing
   if (!text || isTyping) return;
 
-  // Add the user's message to the thread
   appendMessage("user", text);
-
-  // Clear and reset the textarea
   input.value = "";
   autoResize(input);
 
-  // Add this message to the conversation history for context
+  // Add to history so Claude has full conversation context
   conversationHistory.push({ role: "user", content: text });
-
-  // Call the Claude API with web search enabled
   callClaudeAPI(text);
 }
 
-// Handle keyboard shortcuts in the textarea
+// Enter sends; Shift+Enter adds a new line
 function handleKeyDown(e) {
-  // Enter alone sends the message; Shift+Enter adds a new line
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
 }
 
-// Auto-grow the textarea as the user types
+// Auto-grow textarea as user types
 function autoResize(el) {
   el.style.height = "auto";
-  el.style.height = Math.min(el.scrollHeight, 150) + "px";
+  el.style.height = Math.min(el.scrollHeight, 140) + "px";
 }
 
-// Allow quick-ask chips in the sidebar to pre-fill and send a question
-function quickAsk(text) {
-  const input = document.getElementById("userInput");
-  input.value = text;
-  sendMessage();
-}
+// ---- CLAUDE API WITH WEB SEARCH ----
 
-// ---- CLAUDE API CALL ----
-
-// Send question to Claude API with web search tool enabled
-// This lets Viking search csuohio.edu just like a student would
+// Calls Claude API with the web search tool scoped to CSU domains
+// This means Viking reads real csuohio.edu pages — not hardcoded data
 async function callClaudeAPI(userMessage) {
   isTyping = true;
-
-  // Show the animated typing indicator
-  setTypingVisible(true, "Searching csuohio.edu...");
+  setTyping(true, "Searching csuohio.edu...");
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
-
-        // System prompt shapes Viking's personality and focus
         system: SYSTEM_PROMPT,
-
-        // Full conversation history so Viking remembers context
         messages: conversationHistory,
 
-        // Web search tool lets Viking search csuohio.edu in real-time
-        tools: [
-          {
-            type: "web_search_20250305",
-            name: "web_search",
-
-            // Restrict searches to CSU's official domain for accuracy
-            allowed_domains: [
-              "csuohio.edu",
-              "csurec.com",
-              "law.csuohio.edu",
-              "levin.csuohio.edu",
-              "engineering.csuohio.edu",
-              "business.csuohio.edu"
-            ]
-          }
-        ]
+        // Web search restricted to official CSU domains
+        tools: [{
+          type: "web_search_20250305",
+          name: "web_search",
+          allowed_domains: [
+            "csuohio.edu",
+            "csurec.com",
+            "law.csuohio.edu",
+            "levin.csuohio.edu",
+            "engineering.csuohio.edu",
+            "business.csuohio.edu",
+            "artsandsciences.csuohio.edu"
+          ]
+        }]
       })
     });
 
     const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
 
-    // Check for API-level errors
-    if (data.error) {
-      throw new Error(data.error.message || "API error");
-    }
-
-    // Pull the text content from the response blocks
-    // The response may include tool_use (search) and text blocks
-    const fullText = data.content
-      .filter(block => block.type === "text")
-      .map(block => block.text)
+    // Extract text blocks from the response
+    const text = data.content
+      .filter(b => b.type === "text")
+      .map(b => b.text)
       .join("\n")
       .trim();
 
-    // Add Viking's reply to the conversation history
-    if (fullText) {
-      conversationHistory.push({ role: "assistant", content: fullText });
-    }
+    if (text) conversationHistory.push({ role: "assistant", content: text });
 
-    // Hide the typing indicator and show the reply
-    setTypingVisible(false);
+    setTyping(false);
     isTyping = false;
-
-    appendMessage("bot", fullText || "I couldn't find that info right now. Try visiting csuohio.edu or call (216) 687-2000.", "csuohio.edu");
+    appendMessage("bot", text || "I couldn't find that right now. Try csuohio.edu or call (216) 687-2000.", "csuohio.edu");
 
   } catch (err) {
-    // Something went wrong — show a helpful fallback
-    setTypingVisible(false);
+    setTyping(false);
     isTyping = false;
-
-    console.error("Viking API error:", err);
-    appendMessage(
-      "bot",
-      `Sorry, I ran into an issue reaching the CSU website right now.\n\nYou can get help directly:\n📞 (216) 687-2000\n🌐 csuohio.edu\n📧 allin1@csuohio.edu`,
-      null,
-      true // mark as error style
-    );
+    console.error("VikingGPT error:", err);
+    appendMessage("bot", "Sorry, I had trouble reaching CSU's website.\n\nYou can get help directly:\n📞 (216) 687-2000\n🌐 csuohio.edu\n📧 allin1@csuohio.edu");
   }
 }
 
 // ---- DOM HELPERS ----
 
-// Inject a message bubble into the chat thread
-function appendMessage(sender, text, source = null, isError = false) {
+// Add a message bubble to the thread
+function appendMessage(sender, text, source = null) {
   const container = document.getElementById("messages");
 
   const wrapper = document.createElement("div");
   wrapper.className = `message ${sender}`;
 
-  // "V" for Viking, "KP" for the user
   const avatar = document.createElement("div");
   avatar.className = "msg-avatar";
-  avatar.textContent = sender === "bot" ? "V" : USER_INITIALS;
+  avatar.textContent = sender === "bot" ? "V" : "KP";
 
   const content = document.createElement("div");
   content.className = "msg-content";
 
-  // The actual message bubble
   const bubble = document.createElement("div");
-  bubble.className = `msg-bubble${isError ? " error" : ""}`;
+  bubble.className = "msg-bubble";
   bubble.style.whiteSpace = "pre-line";
   bubble.textContent = text;
-
   content.appendChild(bubble);
 
-  // For bot messages, show a small source attribution line
+  // Show source attribution under bot replies
   if (sender === "bot" && source) {
     const src = document.createElement("div");
     src.className = "msg-source";
-    src.innerHTML = `🔍 Source: <a href="https://${source}" target="_blank">${source}</a>`;
+    src.textContent = `🔍 Source: ${source}`;
     content.appendChild(src);
   }
 
-  // Timestamp for each message
-  const timeEl = document.createElement("div");
-  timeEl.className = "msg-time";
-  timeEl.textContent = getCurrentTime();
-  content.appendChild(timeEl);
+  const time = document.createElement("div");
+  time.className = "msg-time";
+  time.textContent = getCurrentTime();
+  content.appendChild(time);
 
   wrapper.appendChild(avatar);
   wrapper.appendChild(content);
   container.appendChild(wrapper);
-
-  // Scroll to the latest message
-  scrollToBottom();
-}
-
-// Show or hide the typing/searching indicator
-function setTypingVisible(visible, label = "Searching csuohio.edu...") {
-  const indicator = document.getElementById("typingIndicator");
-  const labelEl = document.getElementById("typingLabel");
-
-  if (visible) {
-    // Update the label text (e.g. "Searching csuohio.edu...")
-    if (labelEl) labelEl.textContent = label;
-    indicator.classList.add("visible");
-    scrollToBottom();
-  } else {
-    indicator.classList.remove("visible");
-  }
-}
-
-// Smooth-scroll the message list to the bottom
-function scrollToBottom() {
-  const container = document.getElementById("messages");
   container.scrollTop = container.scrollHeight;
 }
 
-// Clear the full chat and reset to the welcome message
-function clearChat() {
-  // Reset conversation history so Viking starts fresh
-  conversationHistory = [];
-
-  const container = document.getElementById("messages");
-  container.innerHTML = "";
-  appendMessage(
-    "bot",
-    `Chat cleared! I'm Viking, your CSU assistant 🏛️\n\nAsk me anything about Cleveland State University — I'll search csuohio.edu for the latest info.`,
-    "csuohio.edu"
-  );
+// Show or hide the animated typing/searching indicator
+function setTyping(visible, label = "Searching csuohio.edu...") {
+  const el = document.getElementById("typingIndicator");
+  const lb = document.getElementById("typingLabel");
+  if (lb) lb.textContent = label;
+  el.classList.toggle("visible", visible);
+  if (visible) document.getElementById("messages").scrollTop = 99999;
 }
 
 // Return current time as "HH:MM"
 function getCurrentTime() {
   const now = new Date();
-  const h = now.getHours().toString().padStart(2, "0");
-  const m = now.getMinutes().toString().padStart(2, "0");
-  return `${h}:${m}`;
+  return now.getHours().toString().padStart(2, "0") + ":" + now.getMinutes().toString().padStart(2, "0");
 }
