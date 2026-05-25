@@ -1,95 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Viking — Chat Assistant</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Viking — CSU Assistant</title>
+  <link rel="stylesheet" href="style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 </head>
 <body>
-
-  <!-- Main chat wrapper -->
   <div class="app-shell">
 
-    <!-- Left sidebar: bot info + history -->
+    <!-- Sidebar: nav + quick topics -->
     <aside class="sidebar">
       <div class="brand">
         <div class="bot-avatar">
-          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="40" height="40" rx="12" fill="#1affb2"/>
-            <path d="M10 28 L20 12 L30 28 Z" fill="#0a0a0f"/>
-            <circle cx="20" cy="22" r="3" fill="#0a0a0f"/>
-          </svg>
+          <svg viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="12" fill="#1affb2"/><path d="M10 28 L20 12 L30 28 Z" fill="#0a0a0f"/><circle cx="20" cy="22" r="3" fill="#0a0a0f"/></svg>
         </div>
         <div class="brand-text">
           <span class="bot-name">Viking</span>
-          <span class="bot-status"><span class="dot"></span> Online</span>
+          <span class="bot-status"><span class="dot"></span> Live CSU Data</span>
         </div>
       </div>
 
-      <!-- Navigation items -->
-      <nav class="sidebar-nav">
-        <button class="nav-item active">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"/></svg>
-          New Chat
-        </button>
-        <button class="nav-item">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a7 7 0 100 14A7 7 0 009 2zm0 12a5 5 0 110-10 5 5 0 010 10zm6.32 1.26l-1.41-1.41a1 1 0 00-1.42 1.42l1.41 1.41a1 1 0 001.42-1.42z"/></svg>
-          Search
-        </button>
-      </nav>
-
-      <!-- Previous chat sessions list -->
-      <div class="history-section">
-        <p class="history-label">Recent</p>
-        <ul class="history-list">
-          <li class="history-item">Project kickoff notes</li>
-          <li class="history-item">Code review help</li>
-          <li class="history-item">Email draft assist</li>
-        </ul>
+      <!-- Quick-access topic chips — clicking sends a preset question -->
+      <div class="topics-section">
+        <p class="section-label">Quick Ask</p>
+        <div class="chip-grid">
+          <button class="chip" onclick="quickAsk('What are the CSU Rec Center hours?')">🏋️ Rec Center Hours</button>
+          <button class="chip" onclick="quickAsk('How do I apply for admission to CSU?')">🎓 Admissions</button>
+          <button class="chip" onclick="quickAsk('What is the tuition at CSU for 2025?')">💰 Tuition</button>
+          <button class="chip" onclick="quickAsk('What programs and majors does CSU offer?')">📚 Programs</button>
+          <button class="chip" onclick="quickAsk('Tell me about CSU housing and dorms')">🏠 Housing</button>
+          <button class="chip" onclick="quickAsk('What are the CSU academic calendar dates for Fall 2025?')">📅 Calendar</button>
+          <button class="chip" onclick="quickAsk('What student clubs and organizations exist at CSU?')">🎉 Campus Life</button>
+          <button class="chip" onclick="quickAsk('What is the CSU financial aid and scholarship process?')">💳 Financial Aid</button>
+          <button class="chip" onclick="quickAsk('How do I contact CSU offices and departments?')">📞 Contacts</button>
+          <button class="chip" onclick="quickAsk('Who are the key staff and faculty at CSU?')">👤 Staff</button>
+        </div>
       </div>
 
-      <!-- User profile at bottom of sidebar -->
+      <!-- User profile block -->
       <div class="sidebar-footer">
         <div class="user-avatar">KP</div>
-        <span class="user-name">krishna-priya</span>
+        <div>
+          <span class="user-name">krishna-priya</span>
+          <span class="user-sub">CSU Student</span>
+        </div>
       </div>
     </aside>
 
-    <!-- Right: main chat area -->
+    <!-- Main chat pane -->
     <main class="chat-area">
 
-      <!-- Top bar -->
       <header class="chat-header">
-        <span class="chat-title">Viking Assistant</span>
-        <div class="header-actions">
-          <button class="icon-btn" title="Clear chat" onclick="clearChat()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm-1 7a1 1 0 012 0v4a1 1 0 11-2 0V9zm4 0a1 1 0 012 0v4a1 1 0 11-2 0V9z" clip-rule="evenodd"/></svg>
-          </button>
+        <div class="header-left">
+          <span class="chat-title">Viking — CSU Assistant</span>
+          <!-- Live indicator shows bot is powered by real CSU data -->
+          <span class="live-badge">
+            <span class="live-dot"></span> Searches csuohio.edu live
+          </span>
         </div>
+        <button class="icon-btn" onclick="clearChat()" title="Clear chat">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm-1 7a1 1 0 012 0v4a1 1 0 11-2 0V9zm4 0a1 1 0 012 0v4a1 1 0 11-2 0V9z" clip-rule="evenodd"/></svg>
+        </button>
       </header>
 
       <!-- Message thread -->
-      <div class="messages" id="messages">
-        <!-- Welcome message injected by JS -->
-      </div>
+      <div class="messages" id="messages"></div>
 
-      <!-- Typing indicator (hidden by default) -->
+      <!-- Typing / searching indicator -->
       <div class="typing-indicator" id="typingIndicator">
         <div class="typing-avatar">V</div>
-        <div class="typing-dots">
-          <span></span><span></span><span></span>
+        <div class="typing-content">
+          <div class="typing-dots"><span></span><span></span><span></span></div>
+          <span class="typing-label" id="typingLabel">Searching csuohio.edu...</span>
         </div>
       </div>
 
-      <!-- Input bar -->
+      <!-- Input row -->
       <div class="input-area">
         <div class="input-wrapper">
           <textarea
             id="userInput"
             class="chat-input"
-            placeholder="Message Viking..."
+            placeholder="Ask anything about Cleveland State University..."
             rows="1"
             onkeydown="handleKeyDown(event)"
             oninput="autoResize(this)"
@@ -98,12 +92,11 @@
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
           </button>
         </div>
-        <p class="input-hint">Press Enter to send · Shift+Enter for new line</p>
+        <p class="input-hint">Enter to send · Shift+Enter for new line · Answers pulled live from csuohio.edu</p>
       </div>
 
     </main>
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>
